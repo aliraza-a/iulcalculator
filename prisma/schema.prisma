@@ -1,0 +1,267 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("MONGODB_URI")
+}
+
+model User {
+  id                        String   @id @default(auto()) @map("_id") @db.ObjectId
+  email                     String   @unique
+  password                  String
+  firstName                 String?
+  lastName                  String?
+  cellPhone                 String?
+  officePhone               String?
+  role                      String   @default("agent")
+  status                    String   @default("active")
+  createdAt                 DateTime? @default(now())
+  updatedAt                 DateTime? @updatedAt
+  files                     ClientFile[]
+  sessions                  Session[]
+  sessionHistory            SessionHistory[]
+  companyInfo               CompanyInfo?  @relation(name: "UserCompanyInfo")
+  companyInfoId             String?       @db.ObjectId
+  DownloadResources         DownloadResources[]
+  TrainingVideos            TrainingVideos[]
+  TrainingDocuments         TrainingDocuments[]
+  TabContent                TabContent[]
+  UserTabContentOrders      UserTabContentOrder[]
+  InsuranceCompany          InsuranceCompany[]
+  InsuranceCompanyRequest   InsuranceCompanyRequest[]
+  PasswordResetToken        PasswordResetToken[]
+  Subscription              Subscription[]
+  TrialToken                TrialToken?
+  AdminContact              AdminContact[]
+  EmailLog                  EmailLog[] 
+  foreverFree               Boolean @default(false)
+}
+
+model CompanyInfo {
+  id                        String    @id @default(auto()) @map("_id") @db.ObjectId
+  businessName              String
+  agentName                 String
+  email                     String
+  phone                     String
+  logoSrc                   String?
+  profilePicSrc             String?
+  userId                    String    @unique @db.ObjectId
+  user                      User      @relation(name: "UserCompanyInfo", fields: [userId], references: [id], onDelete: Cascade)
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+}
+
+model Session {
+  id                        String   @id @default(auto()) @map("_id") @db.ObjectId
+  sessionToken              String   @unique
+  userId                    String   @db.ObjectId
+  expires                   DateTime
+  user                      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+}
+
+model SessionHistory {
+  id                        String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId                    String    @db.ObjectId
+  sessionToken              String
+  ipAddress                 String?
+  userAgent                 String?
+  browserName               String?   // e.g., Chrome, Firefox
+  browserVersion            String?   // e.g., 126.0.0
+  osName                    String?   // e.g., Windows, macOS
+  osVersion                 String?   // e.g., 10, 14.4.1
+  deviceType                String?   // e.g., desktop, mobile, tablet
+  deviceVendor              String?   // e.g., Apple, Samsung
+  deviceModel               String?   // e.g., iPhone, Galaxy S21
+  loginAt                   DateTime  @default(now())
+  logoutAt                  DateTime?
+  user                      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+}
+
+model ClientFile {
+  id                        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId                    String?   @db.ObjectId
+  user                      User?     @relation(fields: [userId], references: [id])
+  fileName                  String
+  createdByRole             String   
+  category                  String   
+  boxesData                 Json?    
+  tablesData                Json?  
+  withdrawalAmount          Int?
+  calculatorAge             Int?
+  calculatorTaxRate         Int?
+  combinedResults           Json?  
+  fields                    Json?  
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  sortOrder                 Int?
+}
+
+model DownloadResources {
+  id                        String    @id @default(auto()) @map("_id") @db.ObjectId
+  fileName                  String
+  filePath                  String
+  fileFormat                String
+  uploadedBy                String    @db.ObjectId
+  uploadedByUser            User      @relation(fields: [uploadedBy], references: [id], onDelete: Restrict)
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+  sortOrder                 Int?
+}
+
+model TrainingVideos {
+  id                        String    @id @default(auto()) @map("_id") @db.ObjectId
+  fileName                  String?
+  filePath                  String?
+  fileFormat                String?
+  link                      String?
+  uploadedBy                String    @db.ObjectId
+  uploadedByUser            User      @relation(fields: [uploadedBy], references: [id], onDelete: Restrict)
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+  order                     Int       @default(0)
+  sortOrder                 Int?
+}
+
+model TrainingDocuments {
+  id                        String    @id @default(auto()) @map("_id") @db.ObjectId
+  fileName                  String
+  filePath                  String
+  fileFormat                String
+  uploadedBy                String    @db.ObjectId
+  uploadedByUser            User      @relation(fields: [uploadedBy], references: [id], onDelete: Restrict)
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+  order                     Int       @default(0)
+}
+
+model TabContent {
+  id                        String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId                    String    @db.ObjectId
+  user                      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tabName                   String
+  fileName                  String?
+  filePath                  String?
+  fileFormat                String?
+  link                      String?
+  createdByRole             String?   // "admin" or "user"
+  order                     Int?      @default(9999) // High default for new content
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+  userTabContentOrders      UserTabContentOrder[] // Relation to user-specific orders
+}
+
+model UserTabContentOrder {
+  id            String     @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String     @db.ObjectId
+  tabContentId  String     @db.ObjectId
+  order         Int
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tabContent    TabContent @relation(fields: [tabContentId], references: [id], onDelete: Cascade)
+  @@unique([userId, tabContentId])
+}
+
+model InsuranceCompany {
+  id                        String    @id @default(auto()) @map("_id") @db.ObjectId
+  name                      String    @unique
+  website                   String?
+  createdBy                 String    @db.ObjectId
+  createdByUser             User      @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+}
+
+model InsuranceCompanyRequest {
+  id                        String    @id @default(auto()) @map("_id") @db.ObjectId
+  name                      String
+  website                   String?
+  submittedBy               String    @db.ObjectId
+  submittedByUser           User      @relation(fields: [submittedBy], references: [id], onDelete: Restrict)
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+}
+
+model PasswordResetToken {
+  id                        String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId                    String    @unique @db.ObjectId
+  token                     String    @unique
+  expiresAt                 DateTime
+  user                      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt                 DateTime  @default(now())
+}
+
+model Subscription {
+  id                        String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId                    String    @db.ObjectId
+  user                      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeCustomerId          String?
+  stripeSubscriptionId      String?    @unique
+  planType                  String // "trial", "monthly", "annual"
+  status                    String // "trialing", "active", "expired", "canceled"
+  startDate                 DateTime  @default(now())
+  renewalDate               DateTime?
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+  iulSales                  IULSale[] // Track IUL sales for trial extension
+  emailLogs                 EmailLog[] // New: Track email notifications for subscriptions
+
+  @@unique([userId])
+}
+
+model TrialToken {
+  id                        String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId                    String    @unique @db.ObjectId
+  user                      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token                     String    @unique
+  createdAt                 DateTime  @default(now())
+  expiresAt                 DateTime
+}
+
+model AdminContact {
+  id                        String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId                    String    @db.ObjectId
+  user                      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message                   String
+  createdAt                 DateTime  @default(now())
+}
+
+model IULSale {
+  id                        String    @id @default(auto()) @map("_id") @db.ObjectId
+  subscriptionId            String    @db.ObjectId
+  subscription              Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  saleDate                  DateTime  @default(now())
+  verified                  Boolean   @default(false)
+  verifiedAt                DateTime?
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+}
+
+model WebhookEvent {
+  id                        String    @id @default(auto()) @map("_id") @db.ObjectId
+  eventId                   String    @unique
+  processedAt               DateTime  @default(now())
+  eventType                 String?   // New: e.g., "subscription.created", "subscription.updated"
+  eventData                 Json?     // New: Store webhook payload for debugging
+}
+
+model EmailLog {
+  id                        String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId                    String?   @db.ObjectId
+  user                      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  subscriptionId            String?   @db.ObjectId
+  subscription              Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  emailType                 String    // e.g., "signup", "trial_activation", "trial_update"
+  recipient                 String    // Email address
+  subject                   String
+  status                    String    // "sent", "failed"
+  errorMessage              String?   // Optional error details
+  sentAt                    DateTime  @default(now())
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+}

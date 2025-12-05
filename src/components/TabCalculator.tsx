@@ -1,0 +1,181 @@
+import { useEffect, useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { useTableStore } from "@/lib/store";
+import { Checkbox } from "./ui/checkbox";
+
+// Utility functions from InflationCalculator
+const formatInputValue = (value: string | number): string => {
+  if (value === "" || value == null) return "";
+  const num = parseFloat(String(value).replace(/[^0-9.]/g, ""));
+  if (isNaN(num)) return "";
+  return `$${num.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })}`;
+};
+
+const parseInputValue = (value: string): number | string => {
+  if (value === "") return "";
+  const num = parseFloat(value.replace(/[^0-9.]/g, ""));
+  return isNaN(num) || num < 0 ? "" : num;
+};
+
+export default function TabCalculator() {
+  const {
+    withdrawalAmount,
+    startingBalance,
+    calculatorAge,
+    calculatorTaxRate,
+    setWithdrawalAmount,
+    setCalculatorAge,
+    setCalculatorTaxRate,
+    syncStartingBalance,
+    setSyncStartingBalance,
+  } = useTableStore();
+
+  const [amount, setAmount] = useState<string | number>(withdrawalAmount);
+  const [age, setAge] = useState(calculatorAge);
+  const [taxRate, setTaxRate] = useState(calculatorTaxRate);
+
+  useEffect(() => {
+    if (startingBalance) {
+      setAmount(startingBalance);
+      setWithdrawalAmount(startingBalance);
+    }
+  }, [startingBalance, setWithdrawalAmount]);
+
+  useEffect(() => {
+    setWithdrawalAmount(amount);
+  }, [amount, setWithdrawalAmount]);
+
+  useEffect(() => {
+    setCalculatorAge(age);
+    setCalculatorTaxRate(taxRate);
+  }, [age, taxRate, setCalculatorAge, setCalculatorTaxRate]);
+
+  // Handle input changes
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInputValue(e.target.value);
+    setAmount(value);
+  };
+
+  const handleAgeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseFloat(e.target.value) || "";
+    setAge(value);
+  };
+
+  const handleTaxRateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseFloat(e.target.value) || "";
+    setTaxRate(value);
+  };
+
+  const handleCheckboxChange = (checked: boolean | "indeterminate") => {
+    if (checked === "indeterminate") {
+      setSyncStartingBalance(false);
+      return;
+    }
+    setSyncStartingBalance(checked);
+  };
+
+  // Conditional calculations
+  const amountNum = typeof amount === "number" ? amount : 0;
+  const ageNum = typeof age === "number" ? age : 0;
+  const taxRateNum = typeof taxRate === "number" ? taxRate : 0;
+  const penalty = syncStartingBalance ? 0 : ageNum < 59.5 ? amountNum * 0.1 : 0;
+  const taxes = syncStartingBalance
+    ? 0
+    : (amountNum - penalty) * (taxRateNum / 100);
+  const netWithdrawal = syncStartingBalance
+    ? amountNum
+    : amountNum - penalty - taxes;
+
+  return (
+    <div className="w-full mx-auto p-4 space-y-5">
+      <h1 className="text-xl font-semibold text-center">
+        Early Withdrawal Tax Calculator
+      </h1>
+      <Card>
+        <CardContent className="space-y-4 pt-4">
+          <div className="flex items-center gap-4">
+            <Label className="grow">Amount to Withdraw</Label>
+            <Input
+              className="w-1/2"
+              type="text"
+              value={formatInputValue(amount)}
+              onChange={handleAmountChange}
+              placeholder="$0.00"
+              aria-label="Amount to Withdraw"
+            />
+          </div>
+          <div className="flex items-center gap-4">
+            <Label className="grow">Current Age</Label>
+            <Input
+              className="w-1/2"
+              type="number"
+              value={age}
+              onChange={handleAgeChange}
+              placeholder="Current Age"
+              aria-label="Current Age"
+            />
+          </div>
+          <div className="flex items-center gap-4">
+            <Label className="grow">Income Tax Rate (%)</Label>
+            <Input
+              className="w-1/2"
+              type="number"
+              value={taxRate}
+              onChange={handleTaxRateChange}
+              placeholder="Tax Rate"
+              aria-label="Income Tax Rate"
+            />
+          </div>
+        </CardContent>
+      </Card>
+      <div className="space-y-2 border-t pt-4 text-right">
+        <div className="flex items-center gap-4">
+          <Checkbox
+            className="checkbox"
+            checked={syncStartingBalance}
+            onCheckedChange={handleCheckboxChange}
+            aria-label="Bypass tax calculation & penalties for this transfer"
+          />
+          <Label className="grow">
+            Bypass tax calculation & penalties for this transfer
+          </Label>
+        </div>
+        <div className="flex justify-between">
+          <span>Penalties</span>
+          <span>
+            $
+            {penalty.toLocaleString(undefined, {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 2,
+            })}
+          </span>
+        </div>
+        <div className="flex justify-between">
+          <span>Taxes</span>
+          <span>
+            $
+            {taxes.toLocaleString(undefined, {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 2,
+            })}
+          </span>
+        </div>
+        <div className="flex justify-between font-bold">
+          <span>Net Withdrawal</span>
+          <span>
+            $
+            {netWithdrawal.toLocaleString(undefined, {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 2,
+            })}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
