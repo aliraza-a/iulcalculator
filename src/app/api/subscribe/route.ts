@@ -56,7 +56,14 @@ export async function POST(request: Request) {
   if (!trialToken) {
     const sixtyDaysFromNow = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000);
 
-    const subscription = await prisma.subscription.create({
+    const subscription = await prisma.subscription.upsert({
+where: {userId: user.id},
+update: {
+planType: plan,
+    status: "trialing",
+    renewalDate: sixtyDaysFromNow
+}
+/*
       data: {
         userId: user.id,
         planType: plan,
@@ -65,6 +72,7 @@ export async function POST(request: Request) {
         renewalDate: sixtyDaysFromNow,
         // stripe fields stay null (they are optional in schema)
       },
+*/
     });
 
     await prisma.trialToken.create({
